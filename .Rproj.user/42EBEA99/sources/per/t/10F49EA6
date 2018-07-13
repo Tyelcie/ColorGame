@@ -5,15 +5,15 @@
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
-    "hash" : "768426777",
+    "hash" : "3368254865",
     "id" : "10F49EA6",
-    "lastKnownWriteTime" : 1531486756,
-    "last_content_update" : 1531486756835,
+    "lastKnownWriteTime" : 1531498137,
+    "last_content_update" : 1531498137483,
     "path" : "D:/R/ColorGame/app.R",
     "project_path" : "app.R",
     "properties" : {
-        "cursorPosition" : "67,22",
-        "scrollLine" : "56"
+        "cursorPosition" : "66,0",
+        "scrollLine" : "48"
     },
     "read_only" : false,
     "read_only_alternatives" : [

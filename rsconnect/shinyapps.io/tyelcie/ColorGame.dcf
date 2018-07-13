@@ -5,8 +5,8 @@ account: tyelcie
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 380188
-bundleId: 1478644
+bundleId: 1479379
 url: https://tyelcie.shinyapps.io/ColorGame/
-when: 1531469878.49693
+when: 1531498177.76433
 asMultiple: FALSE
 asStatic: FALSE

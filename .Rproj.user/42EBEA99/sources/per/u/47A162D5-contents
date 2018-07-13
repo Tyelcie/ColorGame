@@ -1,0 +1,216 @@
+#########################
+# 时间序列数据可视化工具
+# @author: shuiping.chen@alibaba-inc.com
+# @date: 2016-07-10
+#########################
+options(download.file.method = 'libcurl')
+library(shiny)
+library(shinyjs)
+library(DT)
+library(dplyr)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(scales)
+library(plotly)
+install.packages('plotly')
+run.sql <- function(sql, debug=FALSE) {
+  if(debug==FALSE){
+    df <- XXXXX # 自行定义函数，根据数据存储位置，执行SQL语句
+  }
+  else{
+    # 测试数据
+    group_id <- rep(1, nrow(economics))
+    dt <- paste(as.character(economics$date), "00:00:00")
+    df <- cbind(group_id, dt, economics)
+  }
+  return(df)
+}
+
+ui <- fluidPage(
+  useShinyjs(),
+  titlePanel("时间序列数据可视化工具"),
+  # 第一部分：SQL命令提交界面
+  div(id="download"，
+      fluidRow(
+        column(12,
+               textOutput(outputId="download_info")
+        )
+      ),
+      fluidRow(
+        column(12, 
+               HTML(
+                 paste('<textarea id="sql_cmd" rows="10", cols="180">', 
+                       "select * from xxxx limit 1000;",         
+                       '</textarea>')
+               )
+        )
+      ),
+      fluidRow(
+        column(12,
+               actionButton(inputId="refresh_button", label="加载数据", icon=icon("submit")
+               )
+        )
+      )
+  ),
+  
+  
+  shinyjs::hidden(
+    div(id="table",
+        # 第二部分：SQL命令执行结果显示
+        hr(),
+        dataTableOutput(outputId="sql_tab"),
+        
+        # 第三部分：可视化规则设置
+        hr(),
+        textOutput(outputId="tab_button_message"),
+        sidebarLayout(
+          div(id="table_tool",
+              sidebarPanel(
+                selectInput(inputId="group_fields", label="绘图分组字段", choices=NULL, selected=NULL, multiple=TRUE),
+                selectInput(inputId="x_field", label="设置x轴字段，必须是日期时间", choices=NULL, selected=NULL, multiple=FALSE),
+                selectInput(inputId="y_line_fields", label="设置y轴线图字段", choices=NULL, selected=NULL, multiple=TRUE),
+                selectInput(inputId="y_point_fields", label="设置y轴点图字段", choices=NULL, selected=NULL, multiple=TRUE),
+                selectInput(inputId="group_shape_field", label="设置点图形状字段", choices=NULL, selected=NULL, multiple=FALSE),
+                actionButton(inputId="tab_button", label="显示分组表格", icon=icon("submit")),
+                width=3
+              )
+          ),
+          div(id="group_content",
+              mainPanel(dataTableOutput(outputId="group_tab"),
+                        width=9
+              )
+          )
+        )
+    )
+  ),
+  
+  # 第四部分：可视化图形
+  shinyjs::hidden(
+    div(id = "plot",
+        hr(),
+        plotlyOutput(outputId="case_viewer", height="600px")
+    )   
+  )
+)
+
+server <- function(input, output, session) {
+  observe({
+    # 检查SQL输入框
+    if(is.null(input$sql_cmd) | input$sql_cmd == "") {
+      shinyjs::disable("refresh_button")
+    }
+    else{
+      shinyjs::enable("refresh_button")
+    }
+    # 检查可视化规则设置
+    if (input$x_field == "" | (is.null(input$y_line_fields) & is.null(input$y_point_fields)) | is.null(input$group_fields)) {
+      shinyjs::disable("tab_button")
+    } else {
+      shinyjs::enable("tab_button")
+    }
+  })
+  
+  # 执行SQL命令获取数据
+  sql_data <- eventReactive(input$refresh_button, {
+    cat(file=stderr(), "#### event log ####: refresh button clicked\n")
+    shinyjs::disable("refresh_button")
+    shinyjs::hide(id = "table", anim = TRUE)
+    shinyjs::hide(id = "plot", anim = TRUE)
+    res <- run.sql(input$sql_cmd, debug=TRUE)
+    updateSelectInput(session, inputId="group_fields", choices=colnames(res))
+    updateSelectInput(session, inputId="x_field", choices=colnames(res))
+    updateSelectInput(session, inputId="y_line_fields", choices=colnames(res))
+    updateSelectInput(session, inputId="y_point_fields", choices=colnames(res))
+    updateSelectInput(session, inputId="group_shape_field", choices=c("无",colnames(res)), selected="无")
+    shinyjs::enable("refresh_button")
+    shinyjs::show(id = "table", anim = TRUE)
+    shinyjs::hide(id = "group_content", anim = FALSE)
+    return(res)
+  })  
+  
+  # SQL命令执行状态
+  output$download_info <- renderText({
+    if(input$refresh_button == 0){
+      message <- "请敲入SQL select查询语句，点击按钮提交"
+    }
+    else{
+      message <- isolate({paste0("表格下载成功！总行数",  nrow(sql_data()), "，总列数", ncol(sql_data()), "，更新时间是", as.character(lubridate::now(), format="%Y-%m-%d %H:%M:%S"))
+      })
+    }
+    message
+  })
+  
+  # 显示SQL执行结果
+  output$sql_tab <- DT::renderDataTable({
+    datatable(sql_data(), filter='top', selection='single')
+  })
+  
+  # 获取绘图分组结果
+  group_data <- eventReactive(input$tab_button, {
+    cat(file=stderr(), "#### event log ####: tab button clicked\n")
+    res <- sql_data() %>%
+      select(one_of(input$group_fields)) %>%
+      distinct()
+    shinyjs::show(id="group_content", anim=TRUE)
+    return(res)
+  })
+  
+  output$tab_button_message <- renderText({
+    if(input$tab_button == 0) {
+      message <- "请在下方左侧设置数据可视化规则；
+                 点击按钮后，下方右侧将以表格显示数据分组结果；
+               点击表格的一行，将在下方绘制该行所指分组数据的图形"
+    }
+    else {
+      message <- isolate({paste0("绘图分组数",  nrow(group_data()), "，更新时间是", as.character(lubridate::now(), format="%Y-%m-%d %H:%M:%S"))
+      })
+    }
+    message
+  })
+  
+  # 显示绘图分组结果
+  output$group_tab <- DT::renderDataTable({
+    datatable(group_data(), filter='top', selection='single')
+  })
+  
+  # 显示绘图
+  observeEvent(input$group_tab_rows_selected, {
+    cat(file=stderr(), paste0("#### event log ####: group table row ", input$group_tab_rows_selected, " clicked\n"))
+    output$case_viewer <- renderPlotly({
+      s <- input$group_tab_row_last_clicked
+      cat(file=stderr(), "#### event log ####: table row", s, "clicked\n")
+      p <- ggplot()
+      filter_str <- isolate({str_c(group_data()[s, input$group_fields], collapse="_")}) # 使用_以配合unite方法
+      target_plot_data <- sql_data() %>%
+        unite_("new_var", input$group_fields, remove=FALSE) %>%
+        filter(new_var==filter_str)
+      
+      if(length(input$y_line_fields) > 0) {
+        target_plot_data$dt <- lubridate::ymd_hms(target_plot_data[,input$x_field], tz="UTC-8")
+        line_df <- target_plot_data %>%
+          tidyr::gather(col_name, thresh, one_of(input$y_line_fields)) %>%
+          dplyr::mutate(thresh=as.numeric(thresh))
+        p <- p + geom_line(data=line_df, aes(x=dt,y=thresh,color=col_name))
+      }
+      if(length(input$y_point_fields) > 0) {
+        target_plot_data$dt <- lubridate::ymd_hms(target_plot_data[,input$x_field], tz="UTC-8")
+        point_df <- target_plot_data %>%
+          tidyr::gather(col_name, thresh, one_of(input$y_point_fields)) %>%
+          dplyr::mutate(thresh=as.numeric(thresh))
+        if(input$group_shape_field != "无") {
+          point_df[, input$group_shape_field] <- as.factor(point_df[, input$group_shape_field])
+          p <- p + geom_point(data=point_df, aes_string(x="dt",y="thresh",color="col_name", shape=input$group_shape_field))
+        }
+        else{
+          p <- p + geom_point(data=point_df, aes(x=dt,y=thresh,color=col_name))
+        }
+      }
+      p <- p
+      ggplotly(p)
+    })
+    shinyjs::show("plot", anim = TRUE)
+  })
+}
+
+shinyApp(ui=ui, server=server)
