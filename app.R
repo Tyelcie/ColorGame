@@ -1,15 +1,4 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
 library(shiny)
-
-# Define UI for application that draws a histogram
 ui <- fluidPage(
     
     # Application title
@@ -29,18 +18,24 @@ ui <- fluidPage(
         
         # Show a plot of the generated distribution
         mainPanel(
-            column(6,
+            fluidRow(
+              column(3,
                    h4('Your Color'),
                    plotOutput("distPlot")),
-            column(6,
+              column(3,
                    h4('My Color'),
-                   plotOutput('samplePlot')),
-            h3(textOutput('colordist')),
-            br("This is a simulator to FunGyan's game ",
-              strong('Guess Thy Color')," on Google Play Store."),
-            a('https://play.google.com/store/apps/details?id=com.fungyan.guessthycolor'),
-            br('The "percent match" calculation is based on Euclidian Distance, see:'),
-            a('https://en.wikipedia.org/wiki/Color_difference')
+                   plotOutput('samplePlot'))  
+            ),
+            fluidRow(
+                column(6,
+                       h3(textOutput('colordist')),
+                       br("This is a simulator to FunGyan's game ",
+                          strong('Guess Thy Color')," on Google Play Store."),
+                       a('https://play.google.com/store/apps/details?id=com.fungyan.guessthycolor'),
+                       br('The "percent match" calculation is based on Euclidian Distance, see:'),
+                       a('https://en.wikipedia.org/wiki/Color_difference'))      
+                       )
+                
             ))
 )
 
@@ -51,14 +46,16 @@ server <- function(input, output) {
     rG <- sample(0:255,1)
     rB <- sample(0:255,1)
     output$samplePlot <- renderPlot({
-        pie(1,col = rgb(rR/Range,rG/Range,rB/Range),
+        par(mar = c(0,0,0,0))
+        pie(2,col = rgb(rR/Range,rG/Range,rB/Range),
             labels = NA,lty = 0)
     })
     output$distPlot <- renderPlot({
         R <- input$red
         G <- input$green
         B <- input$blue
-        pie(1,col = rgb(R/Range,G/Range,B/Range),
+        par(mar = c(0,0,0,0))
+        pie(2,col = rgb(R/Range,G/Range,B/Range),
             labels = NA,lty = 0)
     })
     output$colordist <- renderText({
