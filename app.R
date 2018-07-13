@@ -13,11 +13,14 @@ library(shiny)
 ui <- fluidPage(
     
     # Application title
-    titlePanel("Guess Thy Color"),
+    titlePanel("Color Game"),
     
     # Sidebar with a slider input for number of bins 
     sidebarLayout(
         sidebarPanel(
+            p('Drag the sliders below to change your color pie,
+              and try to make it closeser to mine.
+              Then click the "My Score" button.'),
             sliderInput("red","Red:",min = 0,max = 255,value = 0),
             sliderInput("green","Green:",min = 0,max = 255,value = 0),
             sliderInput("blue","Blue:",min = 0,max = 255,value = 0),
@@ -26,10 +29,18 @@ ui <- fluidPage(
         
         # Show a plot of the generated distribution
         mainPanel(
-            column(6,plotOutput("distPlot")),
-            column(6,plotOutput('samplePlot')),
+            column(6,
+                   h4('Your Color'),
+                   plotOutput("distPlot")),
+            column(6,
+                   h4('My Color'),
+                   plotOutput('samplePlot')),
             h3(textOutput('colordist')),
-            p("This is a simulator to FunGyan's game ",strong('Guess Thy Color')," on Google Play Store")
+            br("This is a simulator to FunGyan's game ",
+              strong('Guess Thy Color')," on Google Play Store."),
+            a('https://play.google.com/store/apps/details?id=com.fungyan.guessthycolor'),
+            br('The "percent match" calculation is based on Euclidian Distance, see:'),
+            a('https://en.wikipedia.org/wiki/Color_difference')
             ))
 )
 
@@ -51,7 +62,6 @@ server <- function(input, output) {
             labels = NA,lty = 0)
     })
     output$colordist <- renderText({
-        
         input$go
         dist <- isolate(1-(sqrt((input$red-rR)^2+(input$green-rG)^2+(input$blue-rB)^2)/sqrt((255^2)*3)))
         paste0('Percent Match: ',round(dist*100,0),'%')
@@ -60,3 +70,4 @@ server <- function(input, output) {
 
 # Run the application 
 shinyApp(ui = ui, server = server)
+
